@@ -1,5 +1,12 @@
+try:
+    import torch
+except ImportError:
+    import sys
+
+    sys.path.insert(0, "../../torch-archive")
+    import torch
+
 from rlgym_compat import V1GameState
-import torch
 from torch.nn.modules.utils import consume_prefix_in_state_dict_if_present
 
 from rlbot.managers import Bot

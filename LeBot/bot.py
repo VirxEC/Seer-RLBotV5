@@ -11,7 +11,6 @@ except ImportError:
 
 
 from rlgym_compat import GameState
-import torch
 from torch.nn.modules.utils import consume_prefix_in_state_dict_if_present
 
 import math
