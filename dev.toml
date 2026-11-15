@@ -1,0 +1,15 @@
+#:schema https://rlbot.org/schemas/match.json
+[rlbot]
+launcher = "NoLaunch"
+auto_start_bots = true
+
+[mutators]
+match_length = "Unlimited"
+
+[[cars]]
+config_file = "SeerV6/bot.toml"
+team = 0
+
+[[cars]]
+config_file = "SeerV6/bot.toml"
+team = 1

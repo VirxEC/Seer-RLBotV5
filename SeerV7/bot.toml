@@ -1,0 +1,15 @@
+#:schema https://rlbot.org/schemas/agent.json
+[settings]
+loadout_file = "loadout.toml"
+name = "SeerV7.1 43200++"
+run_command = "python bot.py"
+agent_id = "ultrawidegc/seerv7_43200++"
+hivemind = true
+logo_file = "logo.png"
+
+[details]
+developer = "UltrawideGC"
+description = "He is him!"
+fun_fact = "I spent two years creating a co-op puzzle game, Solvimus, launching Nov 16 on the Epic Games Store. Beat Seer to win two free copies!"
+language = "rlgym"
+tags = []

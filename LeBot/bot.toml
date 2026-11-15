@@ -1,0 +1,15 @@
+#:schema https://rlbot.org/schemas/agent.json
+[settings]
+loadout_file = "loadout.toml"
+name = "LeBot"
+run_command = "python bot.py"
+agent_id = "ultrawidegc/lebot"
+hivemind = true
+logo_file = "logo.png"
+
+[details]
+developer = "UltrawideGC"
+description = "A mix of SeerV4, SeerV6 and SeerV7."
+fun_fact = "One Bot to rule them all."
+language = "rlgym"
+tags = ["1v1", "teamplay"]

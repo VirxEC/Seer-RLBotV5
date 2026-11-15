@@ -1,0 +1,14 @@
+#:schema https://rlbot.org/schemas/agent.json
+[settings]
+loadout_file = "loadout.toml"
+name = "SeerV4 36000 ++"
+run_command = "python bot.py"
+agent_id = "ultrawidegc/seerv4_36000++"
+logo_file = "logo.png"
+
+[details]
+developer = "UltrawideGC"
+description = "A 1v1 bot created using reinforcement learning."
+fun_fact = "Trained for 40 years!"
+language = "rlgym"
+tags = ["1v1"]
