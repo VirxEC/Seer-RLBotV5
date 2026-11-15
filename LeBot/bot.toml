@@ -5,11 +5,12 @@ name = "LeBot"
 run_command = "python bot.py"
 agent_id = "ultrawidegc/lebot"
 hivemind = true
-logo_file = "logo.png"
+logo_file = "../logo.png"
 
 [details]
 developer = "UltrawideGC"
 description = "A mix of SeerV4, SeerV6 and SeerV7."
 fun_fact = "One Bot to rule them all."
 language = "rlgym"
+source_link = "https://github.com/Walon1998/Seer-RLBotV5"
 tags = ["1v1", "teamplay"]
