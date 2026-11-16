@@ -13,4 +13,4 @@ description = "A mix of SeerV4, SeerV6 and SeerV7."
 fun_fact = "One Bot to rule them all."
 language = "rlgym"
 source_link = "https://github.com/Walon1998/Seer-RLBotV5"
-tags = ["1v1", "teamplay"]
+tags = ["1v1", "2v2", "3v3", "teamplay"]

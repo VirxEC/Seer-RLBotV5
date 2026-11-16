@@ -13,4 +13,4 @@ description = "A bit washed, but still pretty good."
 fun_fact = "I spent two years creating a co-op puzzle game, Solvimus, launching Nov 16 on the Epic Games Store. Beat Seer to win two free copies!"
 language = "rlgym"
 source_link = "https://github.com/Walon1998/Seer-RLBotV5"
-tags = ["1v1", "teamplay"]
+tags = ["1v1", "2v2", "3v3", "teamplay"]
