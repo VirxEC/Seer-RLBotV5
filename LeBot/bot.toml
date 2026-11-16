@@ -5,7 +5,7 @@ name = "LeBot"
 run_command = "python bot.py"
 agent_id = "ultrawidegc/lebot"
 hivemind = true
-logo_file = "../logo.png"
+logo_file = "logo.png"
 
 [details]
 developer = "UltrawideGC"

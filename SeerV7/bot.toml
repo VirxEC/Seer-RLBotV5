@@ -5,7 +5,7 @@ name = "SeerV7.1 43200++"
 run_command = "python bot.py"
 agent_id = "ultrawidegc/seerv7_43200++"
 hivemind = true
-logo_file = "../logo.png"
+logo_file = "logo.png"
 
 [details]
 developer = "UltrawideGC"
