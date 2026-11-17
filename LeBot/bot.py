@@ -1,12 +1,23 @@
 from rlbot.flat import BallAnchor, ControllerState, GamePacket
 from rlbot.managers import Hivemind
 
+import sys
+from pathlib import Path
+
+
+def model_path(filename: str) -> str:
+    """Resolve a model file from a PyInstaller bundle or from source."""
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        base = Path(sys._MEIPASS)
+    else:
+        base = Path(__file__).resolve().parent.parent
+    return str(base / filename)
+
+
 try:
     import torch
 except ImportError:
-    import sys
-
-    sys.path.insert(0, "../../../torch-archive")
+    sys.path.insert(0, "../../torch-archive")
     import torch
 
 
@@ -587,7 +598,7 @@ class AgentV4:
         torch.set_num_threads(1)
         self.policy = SeerNetworkV4()
 
-        state_dict = torch.load(self.filename, map_location=torch.device('cpu'))
+        state_dict = torch.load(self.filename, map_location=torch.device('cpu'), weights_only=True)
         consume_prefix_in_state_dict_if_present(state_dict, "module.")
         self.policy.load_state_dict(state_dict)
         self.policy.eval()
@@ -1071,7 +1082,7 @@ class AgentV6:
         torch.set_num_threads(1)
         self.policy = SeerNetworkV6("cpu")
 
-        state_dict = torch.load(self.filename, map_location=torch.device('cpu'))
+        state_dict = torch.load(self.filename, map_location=torch.device('cpu'), weights_only=True)
         consume_prefix_in_state_dict_if_present(state_dict, "module.")
         self.policy.load_state_dict(state_dict)
         self.policy.eval()
@@ -1578,7 +1589,7 @@ class AgentV7:
         self.policy = SeerNetworkV7("cpu")
 
         state_dict = torch.load(
-            self.filename, map_location=torch.device('cpu'))
+            self.filename, map_location=torch.device('cpu'), weights_only=True)
         consume_prefix_in_state_dict_if_present(state_dict, "module.")
         self.policy.load_state_dict(state_dict)
         self.policy.eval()
@@ -1622,15 +1633,15 @@ class MyBot(Hivemind):
 
         self.obs_builderV7 = [SeerObsV7(self.condition), SeerObsV7(self.condition)]
         self.act_parserV7 = SeerActionV7()
-        self.agentV7 = AgentV7("../43200.p")
+        self.agentV7 = AgentV7(model_path("43200.p"))
 
         self.obs_builderV6 = [SeerObsV6(self.condition), SeerObsV6(self.condition), SeerObsV6(self.condition), ]
         self.act_parserV6 = SeerActionV6()
-        self.agentV6 = AgentV6("../32400.p")
+        self.agentV6 = AgentV6(model_path("32400.p"))
 
         self.obs_builderV4 = [SeerObsV4(1, self.condition), SeerObsV4(1, self.condition)]
         self.act_parserV4 = SeerActionV4()
-        self.agentV4 = AgentV4("../36000.p")
+        self.agentV4 = AgentV4(model_path("36000.p"))
 
         self.tick_skip = 8
 

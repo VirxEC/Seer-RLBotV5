@@ -1,12 +1,23 @@
 from rlbot.flat import BallAnchor, ControllerState, GamePacket
 from rlbot.managers import Hivemind
 
+import sys
+from pathlib import Path
+
+
+def model_path(filename: str) -> str:
+    """Resolve a model file from a PyInstaller bundle or from source."""
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        base = Path(sys._MEIPASS)
+    else:
+        base = Path(__file__).resolve().parent.parent
+    return str(base / filename)
+
+
 try:
     import torch
 except ImportError:
-    import sys
-
-    sys.path.insert(0, "../../../torch-archive")
+    sys.path.insert(0, "../../torch-archive")
     import torch
 
 
@@ -669,7 +680,7 @@ class MyBot(Hivemind):
 
         self.condition = SeerGameConditionV7()
         self.act_parser = SeerActionV7()
-        self.agent = Agent("../43200.p")
+        self.agent = Agent(model_path("43200.p"))
         self.tick_skip = 8
 
         self.game_state: V1GameState = None
