@@ -5,7 +5,7 @@ a = Analysis(
     ['LeBot/kickoffs.py'],
     pathex=['LeBot'],
     binaries=[],
-    datas=[('LeBot/11100.p', '.'), ('LeBot/36000.p', '.'), ('LeBot/43200.p', '.'), (LeBot/collision_meshes/, 'collision_meshes')],
+    datas=[('LeBot/11100.p', '.'), ('LeBot/36000.p', '.'), ('LeBot/43200.p', '.'), ('LeBot/collision_meshes', 'collision_meshes')],
     hiddenimports=['timeit', 'pickletools', 'uuid', 'unittest.mock', 'ctypes.wintypes'],
     hookspath=[],
     hooksconfig={},
