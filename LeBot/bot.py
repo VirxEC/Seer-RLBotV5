@@ -60,7 +60,7 @@ class CategoricalDistribution:
         self.mask = None
         self.zero = None
 
-    def proba_distribution(self, action_logits: torch.Tensor) -> "MultiCategoricalDistribution":
+    def proba_distribution(self, action_logits: torch.Tensor):
         if self.zero is None:
             self.zero = torch.zeros(1, device=action_logits.device)
         self.distribution = MaskableCategorical(logits=action_logits, validate_args=False, ZERO=self.zero)
