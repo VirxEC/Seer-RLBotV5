@@ -1,6 +1,6 @@
 from rlbot.flat import AirState, FieldInfo, GamePacket, PlayerInfo, ControllerState, MatchPhase
 
-
+from bot import MyBot
 from typing import Dict
 
 import numpy as np
@@ -10,8 +10,6 @@ import math
 from kickoff_data import *
 
 from typing import Union
-
-from bot_real import MyBot
 
 SIDE_WALL_X = 4096  # +/-
 BACK_WALL_Y = 5120  # +/-
@@ -29,7 +27,7 @@ KICKOFF_POS_BLUE = [
     [2048, -2560],
     [-256.0, -3840],
     [256.0, -3840],
-    # [0.0, -4608],
+    [0.0, -4608],
 ]
 
 KICKOFF_POS_ORANGE = [
@@ -37,7 +35,7 @@ KICKOFF_POS_ORANGE = [
     [-2048, 2560],
     [256.0, 3840],
     [-256.0, 3840],
-    # [0.0, 4608],
+    [0.0, 4608],
 ]
 
 
@@ -45,7 +43,7 @@ class Vec3:
     """
     This class should provide you with all the basic vector operations that you need, but feel free to extend its
     functionality when needed.
-    The vectors found in the GameTickPacket will be flatbuffer vectors. Cast them to Vec3 like this:
+    The vectors found in the GamePacket will be flatbuffer vectors. Cast them to Vec3 like this:
     `car_location = Vec3(car.physics.location)`.
 
     Remember that the in-game axis are left-handed.
@@ -59,7 +57,7 @@ class Vec3:
         'z'
     ]
 
-    def __init__(self, x: Union[float, 'Vec3'] = 0, y: float = 0, z: float = 0):
+    def __init__(self, x: Union[float, 'Vec3', ] = 0, y: float = 0, z: float = 0):
         """
         Create a new Vec3. The x component can alternatively be another vector with an x, y, and z component, in which
         case the created vector is a copy of the given vector and the y and z parameter is ignored. Examples:
@@ -130,7 +128,7 @@ class Vec3:
 
     def dot(self, other: 'Vec3') -> float:
         """Returns the dot product."""
-        return self.x * other.x + self.y * other.y + self.z * other.z
+        return self.x*other.x + self.y*other.y + self.z*other.z
 
     def cross(self, other: 'Vec3') -> 'Vec3':
         """Returns the cross product."""
@@ -166,8 +164,8 @@ class Orientation:
         sy = math.sin(self.yaw)
 
         self.forward = Vec3(cp * cy, cp * sy, sp)
-        self.right = Vec3(cy * sp * sr - cr * sy, sy * sp * sr + cr * cy, -cp * sr)
-        self.up = Vec3(-cr * cy * sp - sr * sy, -cr * sy * sp + sr * cy, cp * cr)
+        self.right = Vec3(cy*sp*sr-cr*sy, sy*sp*sr+cr*cy, -cp*sr)
+        self.up = Vec3(-cr*cy*sp-sr*sy, -cr*sy*sp+sr*cy, cp*cr)
 
 
 # Sometimes things are easier, when everything is seen from your point of view.
@@ -212,8 +210,7 @@ def _vector_to_numpy(vector):
     return np.asarray([vector.x, vector.y, vector.z])
 
 
-class testbotHivemindKickoff(MyBot):
-
+class LeBotKickoffs(MyBot):
     def __init__(self, default_agent_id: str | None = None):
         super().__init__(default_agent_id)
 
@@ -266,11 +263,11 @@ class testbotHivemindKickoff(MyBot):
         kickoff_type = self.get_kickoff_type(packet, kickoff_player)
 
         if len(packet.players) == 2:
-            NotImplementedError()
+            kickoffs = KICKOFFS_1v1
         elif len(packet.players) == 4:
             kickoffs = KICKOFFS_2v2
         else:
-            raise NotImplementedError()
+            kickoffs = KICKOFFS_3v3
 
         kickoffs_classes = [a[1] for a in kickoffs[kickoff_type]]
         p = np.array([a[0] for a in kickoffs[kickoff_type]])
@@ -278,18 +275,13 @@ class testbotHivemindKickoff(MyBot):
 
         return np.random.choice(kickoffs_classes, p=p)
 
-    def get_outputs(self, packet: GamePacket) -> dict[int, ControllerState]:
-
-        if len(packet.players) != 4:
-            print("Only 2v2 supported")
-            return {index: ControllerState(throttle=1.0) for index in self.indices}
+    def get_outputs(self, packet: GamePacket) -> Dict[int, ControllerState]:
 
         parent_actions = super().get_outputs(packet)
 
         if len(packet.balls) > 0 and packet.balls[0].physics.location.x == 0.0 and packet.match_info.match_phase == MatchPhase.Countdown:
             self.kickoff_player = self.get_kickoff_player(packet)
-            self.current_kickoff = self.choose_kickoff(
-                packet, self.kickoff_player)
+            self.current_kickoff = self.choose_kickoff(packet, self.kickoff_player)
             self.current_kickoff.reset()
 
         if self.current_kickoff.is_done():
@@ -334,7 +326,6 @@ class HardcodedKickoffDouble(Kickoff):
         self.sequence_cheater = sequence_cheater
         self.index = 0
 
-        assert len(sequence_main) == len(sequence_cheater)
 
     def reset(self):
         self.index = 0
@@ -344,7 +335,8 @@ class HardcodedKickoffDouble(Kickoff):
 
     def get_actions(self, packet: GamePacket, parent_actions, kickoff_player):
 
-        kickoff_player_index = self.get_kickoff_player_index(packet, kickoff_player)
+        kickoff_player_index = self.get_kickoff_player_index(
+            packet, kickoff_player)
 
         actions = {}
         for key in parent_actions:
@@ -379,7 +371,7 @@ class SpanishKickoff(Kickoff):
     def is_done(self):
         return self.done
 
-    def get_actions(self, packet: GamePacket, parent_actions, kickoff_player):
+    def get_actions(self, packet, parent_actions, kickoff_player):
 
         kickoff_player_index = self.get_kickoff_player_index(packet, kickoff_player)
 
@@ -395,7 +387,7 @@ class SpanishKickoff(Kickoff):
 
                     self.chase_counter += 1
                     opponent_goal = None
-                    if packet.players[key].team == 0:  # Blue
+                    if packet.game_cars[key].team == 0:  # Blue
                         opponent_goal = ORANGE_GOAL_CENTER
                     else:
                         opponent_goal = BLUE_GOAL_CENTER
@@ -418,15 +410,14 @@ class SpanishKickoff(Kickoff):
                             target = opponents[i]
                             break
 
-                    assert target is not None
 
-                    p1 = np.array([packet.players[key].physics.location.x, packet.players[key].physics.location.y])
-                    v1 = np.array([packet.players[key].physics.velocity.x, packet.players[key].physics.velocity.y])
+                    p1 = np.array([packet.game_cars[key].physics.location.x, packet.game_cars[key].physics.location.y])
+                    v1 = np.array([packet.game_cars[key].physics.velocity.x, packet.game_cars[key].physics.velocity.y])
                     p2 = np.array([target.physics.location.x, target.physics.location.y])
                     v2 = np.array([target.physics.velocity.x, target.physics.velocity.y])
 
                     p_rel = p1 - p2
-                    v_rel = v1 - v2
+                    v_rel = v1-v2
 
                     t_collision = np.linalg.norm(p_rel) / np.linalg.norm(v_rel)
 
@@ -434,22 +425,22 @@ class SpanishKickoff(Kickoff):
 
                     input = ControllerState()
                     input.throttle = 1.0
-                    input.steer = steer_toward_target(packet.players[key], Vec3(solution[0], solution[1], 17.5))
+                    input.steer = steer_toward_target(packet.game_cars[key], Vec3(solution[0], solution[1], 17.5))
 
-                    current_player_speed = np.linalg.norm(_vector_to_numpy(packet.players[key].physics.velocity))
+                    current_player_speed = np.linalg.norm(_vector_to_numpy(packet.game_cars[key].physics.velocity))
                     if current_player_speed < 2200:
                         input.boost = True
 
-                    if current_player_speed < 2200 and packet.players[key].boost == 0:
+                    if current_player_speed < 2200 and packet.game_cars[key].boost == 0:
                         self.done = True
 
-                    if target.demolished_timeout != -1:
+                    if target.is_demolished:
                         self.done = True
 
-                    if self.chase_counter > 5 * 120:
+                    if self.chase_counter > 5*120:
                         self.done = True
 
-                    if target.has_jumped:
+                    if target.jumped:
                         self.done = True
 
                     actions[key] = input
@@ -507,7 +498,8 @@ class HardcodedKickoffSingle(Kickoff):
 
     def get_actions(self, packet: GamePacket, parent_actions, kickoff_player):
 
-        kickoff_player_index = self.get_kickoff_player_index(packet, kickoff_player)
+        kickoff_player_index = self.get_kickoff_player_index(
+            packet, kickoff_player)
         parent_actions[kickoff_player_index] = self.sequence[self.index]
         self.index += 1
         return parent_actions
@@ -556,7 +548,82 @@ KICKOFFS_2v2 = [
     LEFT_MID_KICKOFFS_2v2,
 ]
 
+RIGHT_DIAG_KICKOFFS_1v1 = [
+    (0.15, HardcodedKickoffSingle(RIGHT_DIAG_KICKOFF_SPEEDFLIP)),
+    (0.15, HardcodedKickoffSingle(RIGHT_DIAG_KICKOFF_FAKE)),
+    (0.3, HardcodedKickoffSingle(SIMPLE_FRONTFLIP)),
+    (0.4, LearnedKickoff()),
+]
+
+LEFT_DIAG_KICKOFFS_1v1 = [
+    (0.15, HardcodedKickoffSingle(LEFT_DIAG_KICKOFF_SPEEDFLIP)),
+    (0.15, HardcodedKickoffSingle(LEFT_DIAG_KICKOFF_FAKE)),
+    (0.3, HardcodedKickoffSingle(SIMPLE_FRONTFLIP)),
+    (0.4, LearnedKickoff()),
+]
+
+RIGHT_MID_KICKOFFS_1v1 = [
+    (0.25, HardcodedKickoffSingle(RIGHT_MID_KICKOFF_SPEEDFLIP)),
+    (0.25, HardcodedKickoffSingle(RIGHT_MID_SIMPLE_DELAYED)),
+    (0.5, LearnedKickoff()),
+]
+
+
+LEFT_MID_KICKOFFS_1v1 = [
+    (0.25, HardcodedKickoffSingle(LEFT_MID_KICKOFF_SPEEDFLIP)),
+    (0.25, HardcodedKickoffSingle(LEFT_MID_SIMPLE_DELAYED)),
+    (0.5, LearnedKickoff()),
+]
+
+MID_KICKOFFS_1v1 = [
+    (0.4, HardcodedKickoffSingle(MID_KICKOFF_SPEEDFLIP)),
+    (0.3, HardcodedKickoffSingle(MID_SIMPLE_DELAYED)),
+    (0.3, LearnedKickoff())
+]
+
+
+KICKOFFS_1v1 = [
+    RIGHT_DIAG_KICKOFFS_1v1,
+    LEFT_DIAG_KICKOFFS_1v1,
+    RIGHT_MID_KICKOFFS_1v1,
+    LEFT_MID_KICKOFFS_1v1,
+    MID_KICKOFFS_1v1
+]
+
+
+
+
+
+LEFT_MID_KICKOFFS_3v3 = [
+    (0.25, HardcodedKickoffSingle(LEFT_MID_KICKOFF_SPEEDFLIP)),
+    (0.25, HardcodedKickoffSingle(LEFT_MID_SIMPLE_DELAYED)),
+    (0.5, LearnedKickoff()),
+]
+
+
+RIGHT_DIAG_KICKOFFS_3v3 = [
+    (0.15, HardcodedKickoffSingle(RIGHT_DIAG_KICKOFF_SPEEDFLIP)),
+    (0.15, HardcodedKickoffSingle(RIGHT_DIAG_KICKOFF_FAKE)),
+    (0.3, HardcodedKickoffSingle(SIMPLE_FRONTFLIP)),
+    (0.4, LearnedKickoff()),
+]
+
+LEFT_DIAG_KICKOFFS_3v3 = [
+    (0.15, HardcodedKickoffSingle(LEFT_DIAG_KICKOFF_SPEEDFLIP)),
+    (0.15, HardcodedKickoffSingle(LEFT_DIAG_KICKOFF_FAKE)),
+    (0.3, HardcodedKickoffSingle(SIMPLE_FRONTFLIP)),
+    (0.4, LearnedKickoff()),
+]
+
+
+KICKOFFS_3v3 = [
+    RIGHT_DIAG_KICKOFFS_3v3,
+    LEFT_DIAG_KICKOFFS_3v3,
+    LEFT_MID_KICKOFFS_3v3,
+    LEFT_MID_KICKOFFS_3v3,
+]
+# Note: LEFT_MID_KICKOFFS_3v3 should be at index 3
+
 
 if __name__ == "__main__":
-    # Connect to RLBot and run
-    testbotHivemindKickoff("ultrawidegc/seerv7_43200++").run()
+    LeBotKickoffs("ultrawidegc/lebot").run()

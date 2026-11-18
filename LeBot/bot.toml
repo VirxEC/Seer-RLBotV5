@@ -1,16 +1,16 @@
 #:schema https://rlbot.org/schemas/agent.json
 [settings]
 loadout_file = "loadout.toml"
-name = "LeBot"
-run_command = "python bot.py"
+name = "LeBot+"
+run_command = "python kickoffs.py"
 agent_id = "ultrawidegc/lebot"
 hivemind = true
 logo_file = "logo.png"
 
 [details]
 developer = "UltrawideGC"
-description = "A mix of SeerV4, SeerV6 and SeerV7."
-fun_fact = "One Bot to rule them all."
+description = "A mix of SeerV4 (1v1), SeerV7 (2v2) and SeerV8 (3v3)."
+fun_fact = "Le Bot to rule them all."
 language = "rlgym"
 source_link = "https://github.com/Walon1998/Seer-RLBotV5"
 tags = ["1v1", "2v2", "3v3", "teamplay"]

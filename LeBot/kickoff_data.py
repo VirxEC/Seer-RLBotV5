@@ -30,6 +30,28 @@ LEFT_DIAG_KICKOFF_SPEEDFLIP = (
         + 10 * 4 * [ControllerState(throttle=1, roll=1, pitch=0.5, handbrake=True)]
 )
 
+
+MID_KICKOFF_SPEEDFLIP = (
+        11 * 4 * [ControllerState(throttle=1, boost=True)]
+        + 4 * 4 * [ControllerState(throttle=1, boost=True, steer=-1)]
+        + 2 * 4 * [ControllerState(throttle=1, jump=True, boost=True)]
+        + 1 * 4 * [ControllerState(throttle=1, boost=True)]
+        + 1 * 4 * [ControllerState(throttle=1, yaw=0.8, pitch=-0.7, jump=True, boost=True)]
+        + 13 * 4 * [ControllerState(throttle=1, pitch=1, boost=True, handbrake=True)]
+        + 11 * 4 * [ControllerState(throttle=1, roll=1, pitch=0.5, boost=True, handbrake=True)]
+)
+
+MID_SIMPLE_DELAYED = (
+        11 * 4 * [ControllerState(throttle=1, boost=True)]
+        + 4 * 4 * [ControllerState(throttle=1, boost=True, steer=-1)]
+        + 2 * 4 * [ControllerState(throttle=1, jump=True, boost=True)]
+        + 1 * 4 * [ControllerState(throttle=1, boost=False)]
+        + 1 * 4 * [ControllerState(throttle=1, yaw=0.8, pitch=-0.7, jump=True, boost=False)]
+        + 13 * 4 * [ControllerState(throttle=1, pitch=1, boost=False, handbrake=True)]
+        + 11 * 4 * [ControllerState(throttle=1, roll=1, pitch=0.5, boost=False, handbrake=True)]
+)
+
+
 helper_fake_left = [
 ControllerState(throttle=-1.0, steer=0.0, pitch=0.7960753440856934, yaw=0.0, roll=0.0, jump=True, boost=False, handbrake=False),
 ControllerState(throttle=-1.0, steer=0.0, pitch=0.8274483680725098, yaw=0.0, roll=0.0, jump=True, boost=False, handbrake=False),

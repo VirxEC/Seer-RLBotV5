@@ -81,7 +81,6 @@ class MaskableCategorical(Categorical):
         self.zero = ZERO
 
     def entropy(self) -> torch.Tensor:
-        assert self.mask is not None
         p_log_p = self.logits * self.probs
         p_log_p = torch.where(self.mask, p_log_p, self.zero)
         return -p_log_p.sum(-1)
@@ -181,7 +180,6 @@ class SeerNetworkV6(nn.Module):
         self.HUGE_NEG = torch.tensor(-1e8, dtype=torch.float32, device=device)
 
     def encode(self, obs):
-        assert obs.shape[-1] in [267]
 
         if obs.shape[-1] == 267:
             return self.encoder(obs)
@@ -327,7 +325,6 @@ def _encode_rotation(rot):
     tol = 1e-4
     if rot > math.pi:
         rot -= 2 * math.pi
-    assert -math.pi - tol <= rot <= math.pi + tol
     return rot
 
 
@@ -347,7 +344,6 @@ def encode_all_players(player, state, inverted, demo_timers, ball):
         else:
             opponent_team.append(p)
 
-    # assert len(opponent_team) > len(same_team)
 
     same_team_encoding = []
     opponent_team_encoding = []
@@ -426,7 +422,6 @@ def _encode_player(player, inverted: bool, demo_timer: float, ball, main_player)
         main_player_diff_norm * (1.0 / 13272.55)
     ], dtype=np.float32)
 
-    assert array.shape[0] == 28
 
     return array
 
@@ -445,7 +440,6 @@ def _encode_ball(ball):
         np.linalg.norm([ball.linear_velocity[0], ball.linear_velocity[1], ball.linear_velocity[2]]) * (1.0 / 6000.0),
     ], dtype=np.float32)
 
-    assert state.shape[0] == 10
 
     return state
 
@@ -619,7 +613,7 @@ class Agent:
         self.filename = filename
         print("{} Loading...".format(self.filename))
 
-        torch.set_num_threads(1)
+        torch.set_num_threads(2)
         self.policy = SeerNetworkV6("cpu")
 
         state_dict = torch.load(self.filename, map_location=torch.device('cpu'), weights_only=True)
@@ -642,7 +636,7 @@ class MyBot(Hivemind):
 
         self.condition = SeerGameConditionV6()
         self.act_parser = SeerActionV6()
-        self.agent = Agent(model_path("32400.p"))
+        self.agent = Agent("32400.p")
         self.tick_skip = 8
 
         self.game_state: V1GameState = None

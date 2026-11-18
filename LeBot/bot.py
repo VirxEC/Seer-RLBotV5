@@ -1,3 +1,5 @@
+import os
+import RocketSim as rsim
 from rlbot.flat import BallAnchor, ControllerState, GamePacket
 from rlbot.managers import Hivemind
 
@@ -40,7 +42,6 @@ class MaskableCategorical(Categorical):
         self.zero = ZERO
 
     def entropy(self) -> torch.Tensor:
-        assert self.mask is not None
         p_log_p = self.logits * self.probs
         p_log_p = torch.where(self.mask, p_log_p, self.zero)
         return -p_log_p.sum(-1)
@@ -138,7 +139,6 @@ class SeerNetworkV4(nn.Module):
 
     def encode(self, obs):
 
-        assert obs.shape[-1] in [144]
 
         if obs.shape[-1] == 144:
             return self.encoder(obs)
@@ -349,7 +349,6 @@ def encode_all_playersV4(player, state, inverted, demo_timers, ball):
         else:
             opponent_team.append(p)
 
-    # assert len(opponent_team) > len(same_team)
 
     same_team.sort(key=lambda x: x.car_id)
     opponent_team.sort(key=lambda x: x.car_id)
@@ -365,7 +364,6 @@ def _encode_rotationV4(rot):
     tol = 1e-4
     if rot > math.pi:
         rot -= 2 * math.pi
-    assert -math.pi - tol <= rot <= math.pi + tol
     return rot
 
 def _encode_playerV4(player, inverted: bool, demo_timer: float, ball):
@@ -414,7 +412,6 @@ def _encode_playerV4(player, inverted: bool, demo_timer: float, ball):
         player.has_jump
     ], dtype=np.float32)
 
-    assert array.shape[0] == 24
 
     return array
 
@@ -433,7 +430,6 @@ def _encode_ballV4(ball):
         np.linalg.norm([ball.linear_velocity[0], ball.linear_velocity[1], ball.linear_velocity[2]]) * (1.0 / 6000.0),
     ], dtype=np.float32)
 
-    assert state.shape[0] == 10
 
     return state
 
@@ -595,7 +591,7 @@ class AgentV4:
         self.filename = filename
         print("{} Loading...".format(self.filename))
 
-        torch.set_num_threads(1)
+        torch.set_num_threads(2)
         self.policy = SeerNetworkV4()
 
         state_dict = torch.load(self.filename, map_location=torch.device('cpu'), weights_only=True)
@@ -654,7 +650,7 @@ class SeerMaskCreatorV6:
         return res
 
 
-class ResBlock(nn.Module):
+class ResBlockV6(nn.Module):
     def __init__(self, size, activation, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.layer0 = nn.Linear(size, size)
@@ -684,21 +680,21 @@ class SeerNetworkV6(nn.Module):
         self.encoder = nn.Sequential(
             nn.Linear(self.OBS_SIZE, self.ENCODER_INTERMEDIATE_SIZE),
             self.activation,
-            ResBlock(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
-            ResBlock(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
-            ResBlock(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
+            ResBlockV6(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
+            ResBlockV6(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
+            ResBlockV6(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
         ).to(device)
 
         self.value_network = nn.Sequential(
-            ResBlock(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
-            ResBlock(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
+            ResBlockV6(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
+            ResBlockV6(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
             nn.Linear(self.ENCODER_INTERMEDIATE_SIZE, 1),
         ).to(device)
 
         self.policy_network = nn.Sequential(
-            ResBlock(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
-            ResBlock(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
-            ResBlock(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
+            ResBlockV6(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
+            ResBlockV6(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
+            ResBlockV6(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
             nn.Linear(self.ENCODER_INTERMEDIATE_SIZE, 90),
         ).to(device)
 
@@ -707,7 +703,6 @@ class SeerNetworkV6(nn.Module):
         self.HUGE_NEG = torch.tensor(-1e8, dtype=torch.float32, device=device)
 
     def encode(self, obs):
-        assert obs.shape[-1] in [267]
 
         if obs.shape[-1] == 267:
             return self.encoder(obs)
@@ -799,7 +794,6 @@ def encode_all_playersV6(player, state, inverted, demo_timers, ball):
         else:
             opponent_team.append(p)
 
-    # assert len(opponent_team) > len(same_team)
 
     same_team_encoding = []
     opponent_team_encoding = []
@@ -825,7 +819,6 @@ def _encode_rotationV6(rot):
     tol = 1e-4
     if rot > math.pi:
         rot -= 2 * math.pi
-    assert -math.pi - tol <= rot <= math.pi + tol
     return rot
 
 
@@ -886,7 +879,6 @@ def _encode_playerV6(player, inverted: bool, demo_timer: float, ball, main_playe
         main_player_diff_norm * (1.0 / 13272.55)
     ], dtype=np.float32)
 
-    assert array.shape[0] == 28
 
     return array
 
@@ -905,7 +897,6 @@ def _encode_ballV6(ball):
         np.linalg.norm([ball.linear_velocity[0], ball.linear_velocity[1], ball.linear_velocity[2]]) * (1.0 / 6000.0),
     ], dtype=np.float32)
 
-    assert state.shape[0] == 10
 
     return state
 
@@ -1079,7 +1070,7 @@ class AgentV6:
         self.filename = filename
         print("{} Loading...".format(self.filename))
 
-        torch.set_num_threads(1)
+        torch.set_num_threads(2)
         self.policy = SeerNetworkV6("cpu")
 
         state_dict = torch.load(self.filename, map_location=torch.device('cpu'), weights_only=True)
@@ -1143,6 +1134,22 @@ class SeerMaskCreatorV7:
         return res
 
 
+class ResBlockV7(nn.Module):
+    def __init__(self, size, activation, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.layer0 = nn.Linear(size, size)
+        self.layer1 = nn.Linear(size, size)
+        self.activation = activation
+
+    def forward(self, x):
+        out = self.layer0(x)
+        out = self.activation(out)
+        out = self.layer1(out)
+        out += x
+        out = self.activation(out)
+        return out
+
+
 class SeerNetworkV7(nn.Module):
     def __init__(self, device):
         super(SeerNetworkV7, self).__init__()
@@ -1157,15 +1164,15 @@ class SeerNetworkV7(nn.Module):
         self.encoder = nn.Sequential(
             nn.Linear(self.OBS_SIZE, self.ENCODER_INTERMEDIATE_SIZE),
             self.activation,
-            ResBlock(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
-            ResBlock(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
+            ResBlockV7(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
+            ResBlockV7(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
         ).to(device)
 
         self.value_network = nn.Sequential(
             nn.Linear(self.ENCODER_INTERMEDIATE_SIZE,
                       self.ENCODER_INTERMEDIATE_SIZE // 2),
             self.activation,
-            ResBlock(self.ENCODER_INTERMEDIATE_SIZE // 2, self.activation),
+            ResBlockV7(self.ENCODER_INTERMEDIATE_SIZE // 2, self.activation),
             nn.Linear(self.ENCODER_INTERMEDIATE_SIZE // 2, 1),
         ).to(device)
 
@@ -1173,7 +1180,7 @@ class SeerNetworkV7(nn.Module):
             nn.Linear(self.ENCODER_INTERMEDIATE_SIZE,
                       self.ENCODER_INTERMEDIATE_SIZE // 2),
             self.activation,
-            ResBlock(self.ENCODER_INTERMEDIATE_SIZE // 2, self.activation),
+            ResBlockV7(self.ENCODER_INTERMEDIATE_SIZE // 2, self.activation),
             nn.Linear(self.ENCODER_INTERMEDIATE_SIZE // 2, 90),
         ).to(device)
 
@@ -1182,7 +1189,6 @@ class SeerNetworkV7(nn.Module):
         self.HUGE_NEG = torch.tensor(-1e8, dtype=torch.float32, device=device)
 
     def encode(self, obs):
-        assert obs.shape[-1] in [215]
 
         if obs.shape[-1] == 215:
             return self.encoder(obs)
@@ -1262,7 +1268,6 @@ def _encode_rotationV7(rot):
     tol = 1e-4
     if rot > math.pi:
         rot -= 2 * math.pi
-    assert -math.pi - tol <= rot <= math.pi + tol
     return rot
 
 
@@ -1283,7 +1288,6 @@ def encode_all_playersV7(player, state, inverted, demo_timers, ball, time_since_
         else:
             opponent_team.append(p)
 
-    # assert len(opponent_team) > len(same_team)
     same_team = sorted(same_team, key=lambda x: np.linalg.norm(
         x.car_data.position - player.car_data.position))
     opponent_team = sorted(opponent_team, key=lambda x: np.linalg.norm(
@@ -1371,7 +1375,6 @@ def _encode_playerV7(player, inverted: bool, demo_timer: float, ball, main_playe
         time_since_ground * (1.0 / 5.0)
     ], dtype=np.float32)
 
-    assert array.shape[0] == 29
 
     return array
 
@@ -1391,7 +1394,6 @@ def _encode_ballV7(ball):
             [ball.linear_velocity[0], ball.linear_velocity[1], ball.linear_velocity[2]])) * (1.0 / 6000.0),
     ], dtype=np.float32)
 
-    assert state.shape[0] == 10
 
     return state
 
@@ -1523,8 +1525,6 @@ class SeerObsV7:
         for p in state.players:
 
             if p.is_demoed:
-                if self.demo_timers.get(p.car_id) is None:
-                    self.demo_timers.update({p.car_id: 0})
                 self.demo_timers.update(
                     {p.car_id: self.demo_timers.get(p.car_id) + self.time_diff_tick})
             else:
@@ -1535,7 +1535,7 @@ class SeerObsV7:
             if p.on_ground:
                 self.time_since_jumped.update({p.car_id: 0})
             else:
-                if self.time_since_jumped.get(p.car_id) is None:
+                if not p.car_id in self.time_since_jumped:
                     self.time_since_jumped.update({p.car_id: 0})
                 self.time_since_jumped.update(
                     {p.car_id: min(5.0, self.time_since_jumped.get(p.car_id) + self.time_diff_tick)})
@@ -1588,8 +1588,7 @@ class AgentV7:
         torch.set_num_threads(2)
         self.policy = SeerNetworkV7("cpu")
 
-        state_dict = torch.load(
-            self.filename, map_location=torch.device('cpu'), weights_only=True)
+        state_dict = torch.load(self.filename, map_location=torch.device('cpu'), weights_only=True)
         consume_prefix_in_state_dict_if_present(state_dict, "module.")
         self.policy.load_state_dict(state_dict)
         self.policy.eval()
@@ -1603,13 +1602,662 @@ class AgentV7:
         return action.numpy()
 
 
-class AgentV7:
+def _vector_to_numpy(vector):
+    return np.asarray([vector.x, vector.y, vector.z])
+
+
+class SeerMaskCreatorV8:
+
+    def __init__(self, device):
+        super(SeerMaskCreatorV8, self).__init__()
+        self.jump_mask = torch.tensor([1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+                                       1., 1., 1., 1., 1., 1., 1., 1., 0., 0., 1., 1., 0., 0., 1., 1., 0., 0., 1., 1., 1., 1., 1., 1.,
+                                       1., 1., 1., 1., 1., 1., 0., 0., 0., 0., 1., 1., 0., 0., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+                                       1., 1., 0., 0., 1., 1., 0., 0., 1., 1., 0., 0., 1., 1., 1., 1., 1., 1.], dtype=torch.bool, device=device, requires_grad=False)
+
+        self.pitch_roll_mask = torch.tensor([1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+                                             0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                                             0., 0., 0., 0., 0., 0., 0., 0., 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                                             0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], dtype=torch.bool, device=device, requires_grad=False)
+
+        self.boost_mask = torch.tensor([1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 0., 0., 1., 1., 0., 0., 1., 1., 0., 0.,
+                                        1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0.,
+                                        1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0.,
+                                        1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0.], dtype=torch.bool, device=device, requires_grad=False)
+
+        self.handbrake_mask = torch.tensor([1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0.,
+                                            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+                                            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+                                            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.], dtype=torch.bool, device=device, requires_grad=False)
+
+        self.demo = torch.tensor([0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                                  0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                                  0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                                  0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], dtype=torch.bool, device=device, requires_grad=False)
+
+        self.ones = torch.ones(1, dtype=torch.bool, device=device, requires_grad=False)
+
+    def create_mask(self, obs):
+        has_boost = obs[:, 13] > 0.0
+        on_ground = obs[:, 14] == 1
+        has_flip = obs[:, 15] == 1
+        is_alive = obs[:, 16] == 0
+        in_air = torch.logical_not(on_ground)
+
+        with torch.no_grad():
+            mask_0 = torch.where(has_boost.unsqueeze(1), self.ones, self.boost_mask)
+            mask_1 = torch.where(has_flip.unsqueeze(1), self.ones, self.jump_mask)
+            mask_2 = torch.where(in_air.unsqueeze(1), self.ones, self.pitch_roll_mask)
+            mask_3 = torch.where(on_ground.unsqueeze(1), self.ones, self.handbrake_mask)
+            mask_4 = torch.where(is_alive.unsqueeze(1), self.ones, self.demo)
+
+            res = ((mask_0 * mask_1) * (mask_2 * mask_3)) * mask_4
+
+        return res
+
+
+class ResBlockV8(nn.Module):
+    def __init__(self, size, activation, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.layer0 = nn.Linear(size, size)
+        self.layer1 = nn.Linear(size, size)
+        self.activation = activation
+
+    def forward(self, x):
+        out = self.layer0(x)
+        out = self.activation(out)
+        out = self.layer1(out)
+        out += x
+        out = self.activation(out)
+        return out
+
+
+class SeerNetworkV8(nn.Module):
+    def __init__(self, device):
+        super(SeerNetworkV8, self).__init__()
+        self.activation = nn.LeakyReLU(inplace=True)
+
+        self.OBS_SIZE = 306
+
+        self.ENCODER_INTERMEDIATE_SIZE = 1024
+
+        self.mask_creator = SeerMaskCreatorV8(device)
+
+        self.encoder = nn.Sequential(
+            nn.Linear(self.OBS_SIZE, self.ENCODER_INTERMEDIATE_SIZE),
+            self.activation,
+            ResBlockV8(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
+            ResBlockV8(self.ENCODER_INTERMEDIATE_SIZE, self.activation),
+        ).to(device)
+
+        self.value_network = nn.Sequential(
+            nn.Linear(self.ENCODER_INTERMEDIATE_SIZE, self.ENCODER_INTERMEDIATE_SIZE // 2),
+            self.activation,
+            ResBlockV8(self.ENCODER_INTERMEDIATE_SIZE // 2, self.activation),
+            nn.Linear(self.ENCODER_INTERMEDIATE_SIZE // 2, 1),
+        ).to(device)
+
+        self.policy_network = nn.Sequential(
+            nn.Linear(self.ENCODER_INTERMEDIATE_SIZE, self.ENCODER_INTERMEDIATE_SIZE // 2),
+            self.activation,
+            ResBlockV8(self.ENCODER_INTERMEDIATE_SIZE // 2, self.activation),
+            nn.Linear(self.ENCODER_INTERMEDIATE_SIZE // 2, 90),
+        ).to(device)
+
+        self.distribution = CategoricalDistribution(90)
+
+        self.HUGE_NEG = torch.tensor(-1e8, dtype=torch.float32, device=device)
+
+    def encode(self, obs):
+
+        if obs.shape[-1] == 306:
+            return self.encoder(obs)
+
+    def forward(self, obs, deterministic):
+        x = self.encode(obs)
+
+        value = self.value_network(x)
+        policy_logits = self.policy_network(x)
+        mask = self.mask_creator.create_mask(obs)
+        policy_logits = torch.where(mask, policy_logits, self.HUGE_NEG)
+        self.distribution.proba_distribution(policy_logits)
+        self.distribution.apply_mask(mask)
+
+        actions = self.distribution.get_actions(deterministic=deterministic)
+        log_prob = self.distribution.log_prob(actions)
+        return actions, value, log_prob,
+
+    def predict_value(self, obs):
+        x = self.encode(obs)
+        value = self.value_network(x)
+        return value
+
+    def predict_actions(self, obs, deterministic):
+        x = self.encode(obs)
+
+        policy_logits = self.policy_network(x)
+        mask = self.mask_creator.create_mask(obs)
+        policy_logits = torch.where(mask, policy_logits, self.HUGE_NEG)
+        self.distribution.proba_distribution(policy_logits)
+        self.distribution.apply_mask(mask)
+
+        actions = self.distribution.get_actions(deterministic=deterministic)
+        return actions
+
+    def evaluate_actions(self, obs, actions, mask):
+        x = self.encode(obs)
+
+        value = self.value_network(x)
+        policy_logits = self.policy_network(x)
+        policy_logits = torch.where(mask, policy_logits, self.HUGE_NEG)
+        self.distribution.proba_distribution(policy_logits)
+        log_prob = self.distribution.log_prob(actions)
+
+        entropy = self.distribution.entropy()
+
+        return value, log_prob, entropy
+
+
+class SeerGameConditionV8:  # Mimics a Rocket League game
+    def __init__(self, tick_skip=4, overtime_prob=0.1, no_touch_timeout=512):
+        super().__init__()
+        self.tick_skip = tick_skip
+        self.timer = 0
+        self.overtime = False
+        self.done = True
+        self.initial_state = None
+        self.score = 0
+        self.overtime_prob = overtime_prob
+        self.last_touch = 0
+        # self.no_touch_timeout = NoTouchTimeoutCondition(no_touch_timeout)
+        self.scored = 0.0
+        self.ball_ground_flag = False
+
+    def reset(self, initial_state: GameState):
+        self.initial_state = initial_state
+        self.done = False
+        # self.no_touch_timeout.reset(initial_state)
+        self.scored = 0.0
+
+        if random.random() < self.overtime_prob:
+            self.overtime = True
+            self.timer = 0
+            self.score = 0
+        else:
+            self.overtime = False
+            self.timer = random.uniform(5, 300)
+            self.score = random.choices([-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5], weights=[1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1], k=1)[0]
+
+    def is_terminal(self, current_state: GameState) -> bool:
+
+        # Setter reset if ball on ground
+        if self.ball_ground_flag and current_state.ball.position[2] <= 110:
+            return True
+
+        reset = False
+
+        self.scored = ((current_state.blue_score - self.initial_state.blue_score)
+                       - (current_state.orange_score - self.initial_state.orange_score))
+
+        self.score += self.scored
+
+        if self.scored != 0:  # Goal scored
+            reset = True
+
+        if self.overtime:
+            if self.scored != 0:  # Overtime
+                self.done = True
+
+        else:
+            if self.timer <= 0 and current_state.ball.position[2] <= 110:
+                reset = True
+
+                if self.score != 0:
+                    self.done = True
+
+        self.timer -= self.tick_skip / 120
+        self.timer = max(0, self.timer)
+
+        # if self.no_touch_timeout.is_terminal(current_state):
+        #     reset = True
+
+        return reset or self.done
+
+
+def get_encoded_actionV8(action: np.ndarray) -> np.ndarray:
+    # throttle, steer, pitch, yaw, roll, jump, boost, handbrake
+
+    action_encoding = np.zeros(15, dtype=np.float32)
+
+    acc = 0
+    throttle_index = action[0] + 1 + acc
+    acc += 3
+    steer_yaw_index = action[1] + 1 + acc
+    acc += 3
+    pitch_index = action[2] + 1 + acc
+    acc += 3
+    roll_index = action[4] + 1 + acc
+
+    action_encoding[int(throttle_index)] = 1.0
+    action_encoding[int(steer_yaw_index)] = 1.0
+    action_encoding[int(pitch_index)] = 1.0
+    action_encoding[int(roll_index)] = 1.0
+
+    action_encoding[12] = action[5]
+    action_encoding[13] = action[6]
+    action_encoding[14] = action[7]
+
+    return action_encoding
+
+
+def _encode_rotationV8(rot):
+    tol = 1e-4
+    if rot > math.pi:
+        rot -= 2 * math.pi
+    return rot
+
+
+def encode_all_playersV8(player, state, inverted, demo_timers, ball, time_since_jumped):
+    player_encoding = _encode_playerV8(player, inverted, demo_timers.get(player.car_id), ball, player, time_since_jumped.get(player.car_id))
+
+    same_team = []
+    opponent_team = []
+
+    for p in state.players:
+
+        if p == player:
+            continue
+
+        if p.team_num == player.team_num:
+            same_team.append(p)
+        else:
+            opponent_team.append(p)
+
+    same_team = sorted(same_team, key=lambda x: np.linalg.norm(x.car_data.position - player.car_data.position))
+    opponent_team = sorted(opponent_team, key=lambda x: np.linalg.norm(x.car_data.position - player.car_data.position))
+
+    same_team_encoding = []
+    opponent_team_encoding = []
+
+    for p in same_team:
+        same_team_encoding.append(_encode_playerV8(p, inverted, demo_timers.get(p.car_id), ball, player, time_since_jumped.get(p.car_id)))
+
+    for p in opponent_team:
+        opponent_team_encoding.append(_encode_playerV8(p, inverted, demo_timers.get(p.car_id), ball, player, time_since_jumped.get(p.car_id)))
+
+    # while len(same_team_encoding) < 2:
+    #     same_team_encoding.append(np.zeros(28, dtype=np.float32))
+
+    # while len(opponent_team_encoding) < 3:
+    #     opponent_team_encoding.append(np.zeros(28, dtype=np.float32))
+
+    encodings = [player_encoding] + same_team_encoding + opponent_team_encoding
+
+    return encodings
+
+
+def _encode_playerV8(player, inverted: bool, demo_timer: float, ball, main_player, time_since_ground: float):
+    if inverted:
+        player_car = player.inverted_car_data
+        main_player_car = main_player.inverted_car_data
+    else:
+        player_car = player.car_data
+        main_player_car = main_player.car_data
+
+    vel_norm = np.linalg.norm(player_car.linear_velocity)
+    ball_dif = ball.position - player_car.position
+    ball_diff_norm = np.linalg.norm(ball_dif)
+
+    main_player_diff = main_player_car.position - player_car.position
+    main_player_diff_norm = np.linalg.norm(main_player_diff)
+
+    pitch = _encode_rotationV8(player_car.pitch())
+    yaw = _encode_rotationV8(player_car.yaw())
+    roll = _encode_rotationV8(player_car.roll())
+
+    if not player.is_demoed:
+
+        array = np.array([
+            player_car.position[0] * (1.0 / 4096.0),
+            player_car.position[1] * (1.0 / 5120.0),
+            player_car.position[2] * (1.0 / 2048.0),
+            pitch * (1.0 / math.pi),
+            yaw * (1.0 / math.pi),
+            roll * (1.0 / math.pi),
+            player_car.linear_velocity[0] * (1.0 / 2300.0),
+            player_car.linear_velocity[1] * (1.0 / 2300.0),
+            player_car.linear_velocity[2] * (1.0 / 2300.0),
+            player_car.angular_velocity[0] * (1.0 / 5.5),
+            player_car.angular_velocity[1] * (1.0 / 5.5),
+            player_car.angular_velocity[2] * (1.0 / 5.5),
+            0,  # demo timer
+            player.boost_amount,
+            player.on_ground,
+            player.has_flip,
+            player.is_demoed,
+            vel_norm * (1.0 / 2300.0),
+            vel_norm > 2200,
+            ball_dif[0] * (1.0 / (4096.0 * 2.0)),
+            ball_dif[1] * (1.0 / (5120.0 * 2.0)),
+            ball_dif[2] * (1.0 / 2048.0),
+            ball_diff_norm * (1.0 / 13272.55),
+            player.has_jump,
+            main_player_diff[0] * (1.0 / (4096.0 * 2.0)),
+            main_player_diff[1] * (1.0 / (5120.0 * 2.0)),
+            main_player_diff[2] * (1.0 / 2048.0),
+            main_player_diff_norm * (1.0 / 13272.55),
+            time_since_ground * (1.0 / 5.0)
+        ], dtype=np.float32)
+
+    else:
+        array = np.array([
+            0,  # position[0]
+            0,  # position[1]
+            0,  # position[2]
+            0,  # pitch
+            0,  # yaw
+            0,  # roll
+            0,  # linear_velocity[0]
+            0,  # linear_velocity[1]
+            0,  # linear_velocity[2]
+            0,  # angular_velocity[0]
+            0,  # angular_velocity[1]
+            0,  # angular_velocity[2]
+            max(1.0 - demo_timer * (1 / 3.0), 0.0),
+            0,  # player.boost_amount
+            0,  # on_ground
+            0,  # has_fip
+            player.is_demoed,
+            0,  # vel_norm
+            0,  # vel_norm > 0
+            0,  # ball_diff_x
+            0,  # ball_diff_y
+            0,  # ball_diff_z
+            0,  # ball_diff_norm
+            0,  # has_jump
+            0,  # main_player_diff_x
+            0,  # main_player_diff_y
+            0,  # main_player_diff_z
+            0,  # main_player_diff_norm
+            0  # time_since_ground
+        ], dtype=np.float32)
+
+
+    return array
+
+
+def _encode_ballV8(ball):
+    state = np.array([
+        ball.position[0] * (1.0 / 4096.0),
+        ball.position[1] * (1.0 / 5120.0),
+        ball.position[2] * (1.0 / 2048.0),
+        ball.linear_velocity[0] * (1.0 / 6000.0),
+        ball.linear_velocity[1] * (1.0 / 6000.0),
+        ball.linear_velocity[2] * (1.0 / 6000.0),
+        ball.angular_velocity[0] * (1.0 / 6.0),
+        ball.angular_velocity[1] * (1.0 / 6.0),
+        ball.angular_velocity[2] * (1.0 / 6.0),
+        np.linalg.norm(ball.linear_velocity) * (1.0 / 6000.0),
+    ], dtype=np.float32)
+
+
+    return state
+
+
+pads_scaler_V8 = np.array([
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 10.0,
+    1.0 / 10.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 10.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 10.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 10.0,
+    1.0 / 10.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+    1.0 / 4.0,
+], dtype=np.float32)
+
+
+def encode_boost_padsV8(boost_pads_timers):
+    pads_active = boost_pads_timers == 0.0
+
+    timers = boost_pads_timers * pads_scaler_V8
+
+    return [pads_active, timers]
+
+
+def encode_game_stateV8(state, condition, inverted):
+    dif, timer, overtime = condition.score, condition.timer, condition.overtime
+
+    # is_ones = 0
+    # is_twos = 0
+    # is_threes = 0
+
+    # if len(state.players) == 2:
+    #     is_ones = 1
+    # elif len(state.players) == 4:
+    #     is_twos = 1
+    # elif len(state.players) == 6:
+    #     is_threes = 1
+    # else:
+    #     raise NotImplementedError(len(state.players))
+
+    if inverted:
+        dif *= -1
+
+    # game_state = [is_ones, is_twos, is_threes, np.clip(dif / 10,-0.5, 0.5), timer / 300, overtime]
+    game_state = [np.clip(dif / 10, -0.5, 0.5), timer / 300, overtime]
+
+    return game_state
+
+
+def make_ball_predicitionV8(ball, arena, times):
+    result = np.empty([len(times) * 6], dtype=np.float32)
+
+    ball_state = arena.ball.get_state()
+    ball_state.pos = rsim.Vec(ball.position[0], ball.position[1], ball.position[2])
+    ball_state.vel = rsim.Vec(ball.linear_velocity[0], ball.linear_velocity[1], ball.linear_velocity[2])
+    ball_state.ang_vel = rsim.Vec(ball.angular_velocity[0], ball.angular_velocity[1], ball.angular_velocity[2])
+    arena.ball.set_state(ball_state)
+
+    for i, t in enumerate(times):
+
+        if i == 0:
+            ticks = t * 120
+        else:
+            ticks = (t - times[i - 1]) * 120
+
+        arena.step(int(ticks))
+
+        ball_state2 = arena.ball.get_state()
+
+        result[i * 6 + 0] = ball_state2.pos[0] * (1.0 / 4096.0)
+        result[i * 6 + 1] = ball_state2.pos[1] * (1.0 / 5120.0)
+        result[i * 6 + 2] = ball_state2.pos[2] * (1.0 / 2048.0)
+        result[i * 6 + 3] = ball_state2.vel[0] * (1.0 / 6000.0)
+        result[i * 6 + 4] = ball_state2.vel[1] * (1.0 / 6000.0)
+        result[i * 6 + 5] = ball_state2.vel[2] * (1.0 / 6000.0)
+
+
+    return result
+
+
+class SeerObsV8:
+    def __init__(self, condition, default_tick_skip=8.0, physics_ticks_per_second=120.0):
+
+
+        self.boost_pads_timers = np.zeros(34, dtype=np.float32)
+        self.demo_timers = {}
+        self.time_diff_tick = default_tick_skip / physics_ticks_per_second
+        self.condition = condition
+        self.time_since_jumped = {}
+        self.arena = rsim.Arena(rsim.GameMode.SOCCAR)
+        self.times = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0]
+        self.ball_prediction = None
+        self.ball_prediction_inv = None
+        self.ball_pred_inverter = np.array([-1, -1, 1, -1, -1, 1] * len(self.times), dtype=np.float32)
+        self.pads_encoding = None
+        self.pads_encoding_inv = None
+        self.game_state = None
+        self.game_state_inv = None
+        self.ball_data = None
+        self.ball_data_inv = None
+
+    def reset(self, initial_state: GameState):
+
+        self.boost_pads_timers = np.zeros(34, dtype=np.float32)
+        self.demo_timers = {}
+        self.time_since_jumped = {}
+        for p in initial_state.players:
+            self.demo_timers.update({p.car_id: 0})
+            self.time_since_jumped.update({p.car_id: 0})
+
+    def pre_step(self, state: GameState):
+        self.update_boostpads(state.boost_pads)
+        self.update_demo_timers(state)
+        self.update_time_since_jumped(state)
+
+        # Ball Predicition
+        self.ball_prediction = make_ball_predicitionV8(state.ball, self.arena, self.times)
+        self.ball_prediction_inv = self.ball_prediction * self.ball_pred_inverter
+
+        # Pads
+        self.pads_encoding = encode_boost_padsV8(self.boost_pads_timers)
+        self.pads_encoding_inv = encode_boost_padsV8(self.boost_pads_timers[::-1])
+
+        # Game state
+        self.game_state = encode_game_stateV8(state, self.condition, False)
+        self.game_state_inv = encode_game_stateV8(state, self.condition, True)
+
+        # Ball
+        self.ball_data = _encode_ballV8(state.ball)
+        self.ball_data_inv = _encode_ballV8(state.inverted_ball)
+
+        # has_flip fix
+        for player in state.players:
+            if player.has_flip and not player.has_jump and self.time_since_jumped[player.car_id] > 1.45:
+                player.has_flip = False
+
+    def build_obs(self, player, state: GameState, previous_action: np.ndarray) -> Any:
+
+        if player.team_num == 1:
+            inverted = True
+            ball_data = self.ball_data_inv
+            pads_encoding = self.pads_encoding_inv
+            ball_prediction = self.ball_prediction_inv
+            game_state = self.game_state_inv
+            ball = state.inverted_ball
+        else:
+            inverted = False
+            ball_data = self.ball_data
+            pads_encoding = self.pads_encoding
+            ball_prediction = self.ball_prediction
+            game_state = self.game_state
+            ball = state.ball
+
+        player_encodings = encode_all_playersV8(player, state, inverted, self.demo_timers, ball, self.time_since_jumped)
+        prev_action_enc = get_encoded_actionV8(previous_action)
+        obs = np.concatenate([*player_encodings, ball_data, prev_action_enc, *pads_encoding, game_state, ball_prediction], dtype=np.float32)
+        return obs
+
+    def update_boostpads(self, pads):
+
+        mask = pads == 1.0
+        not_mask = np.logical_not(mask)
+
+        self.boost_pads_timers[mask] = 0.0
+        self.boost_pads_timers[not_mask] += self.time_diff_tick
+
+    def update_demo_timers(self, state: GameState):
+
+        for p in state.players:
+
+            if p.is_demoed:
+                self.demo_timers.update({p.car_id: self.demo_timers.get(p.car_id) + self.time_diff_tick})
+            else:
+                self.demo_timers.update({p.car_id: 0})
+
+    def update_time_since_jumped(self, state: GameState):
+        for p in state.players:
+            if p.on_ground:
+                self.time_since_jumped.update({p.car_id: 0})
+            else:
+                if p.car_id not in self.time_since_jumped:
+                    self.time_since_jumped.update({p.car_id: 0})
+                self.time_since_jumped.update({p.car_id: min(5.0, self.time_since_jumped.get(p.car_id) + self.time_diff_tick)})
+
+
+class SeerActionV8:
+    def __init__(self):
+        super().__init__()
+        self._lookup_table = self.make_lookup_table()
+
+    @staticmethod
+    def make_lookup_table():
+        actions = []
+        # Ground
+        for throttle in (-1, 0, 1):
+            for steer in (-1, 0, 1):
+                for boost in (0, 1):
+                    for handbrake in (0, 1):
+                        if boost == 1 and throttle != 1:
+                            continue
+                        actions.append([throttle or boost, steer, 0, steer, 0, 0, boost, handbrake])
+        # Aerial
+        for pitch in (-1, 0, 1):
+            for yaw in (-1, 0, 1):
+                for roll in (-1, 0, 1):
+                    for jump in (0, 1):
+                        for boost in (0, 1):
+                            if jump == 1 and yaw != 0:  # Only need roll for sideflip
+                                continue
+                            if pitch == roll == jump == 0:  # Duplicate with ground
+                                continue
+                            # Enable handbrake for potential wavedashes
+                            # Note to self: This handbranke is not reflected in the handbrake mask
+                            handbrake = jump == 1 and (pitch != 0 or yaw != 0 or roll != 0)
+                            actions.append([boost, yaw, pitch, yaw, roll, jump, boost, handbrake])
+        actions = np.array(actions)
+        return actions
+
+    # def get_action_space(self) -> gym.spaces.Space:
+    #     return Discrete(len(self._lookup_table))
+
+    def parse_actions(self, actions: Any, state: GameState) -> np.ndarray:
+        return self._lookup_table[actions]
+
+
+class AgentV8:
     def __init__(self, filename):
         self.filename = filename
         print("{} Loading...".format(self.filename))
 
-        torch.set_num_threads(1)
-        self.policy = SeerNetworkV7("cpu")
+        torch.set_num_threads(2)
+        self.policy = SeerNetworkV8("cpu")
 
         state_dict = torch.load(self.filename, map_location=torch.device('cpu'), weights_only=True)
         consume_prefix_in_state_dict_if_present(state_dict, "module.")
@@ -1633,15 +2281,15 @@ class MyBot(Hivemind):
 
         self.obs_builderV7 = [SeerObsV7(self.condition), SeerObsV7(self.condition)]
         self.act_parserV7 = SeerActionV7()
-        self.agentV7 = AgentV7(model_path("43200.p"))
+        self.agentV7 = AgentV7("43200.p")
 
-        self.obs_builderV6 = [SeerObsV6(self.condition), SeerObsV6(self.condition), SeerObsV6(self.condition), ]
-        self.act_parserV6 = SeerActionV6()
-        self.agentV6 = AgentV6(model_path("32400.p"))
+        self.obs_builderV8 = [SeerObsV8(self.condition), SeerObsV8(self.condition), SeerObsV8(self.condition), ]
+        self.act_parserV8 = SeerActionV8()
+        self.agentV8 = AgentV8("11100.p")
 
         self.obs_builderV4 = [SeerObsV4(1, self.condition), SeerObsV4(1, self.condition)]
         self.act_parserV4 = SeerActionV4()
-        self.agentV4 = AgentV4(model_path("36000.p"))
+        self.agentV4 = AgentV4("36000.p")
 
         self.tick_skip = 8
 
@@ -1696,8 +2344,8 @@ class MyBot(Hivemind):
                     obs = self.obs_builderV7[i].build_obs(player, self.game_state, self.actions[i])
                     obs_array.append(obs)
                 elif len(self.game_state.players) == 6:
-                    self.obs_builderV6[i].pre_step(self.game_state)
-                    obs = self.obs_builderV6[i].build_obs(player, self.game_state, self.actions[i])
+                    self.obs_builderV8[i].pre_step(self.game_state)
+                    obs = self.obs_builderV8[i].build_obs(player, self.game_state, self.actions[i])
                     obs_array.append(obs)
                 else:
                     pass
@@ -1712,8 +2360,8 @@ class MyBot(Hivemind):
                 actions = self.agentV7.act(obs_array)
                 self.actions = self.act_parserV7.parse_actions(actions, self.game_state)
             elif len(self.game_state.players) == 6:
-                actions = self.agentV6.act(obs_array)
-                self.actions = self.act_parserV6.parse_actions(actions, self.game_state)
+                actions = self.agentV8.act(obs_array)
+                self.actions = self.act_parserV8.parse_actions(actions, self.game_state)
             else:
                 pass
         

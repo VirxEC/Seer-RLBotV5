@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['LeBot/bot.py'],
+    ['LeBot/kickoffs.py'],
     pathex=['LeBot'],
     binaries=[],
-    datas=[('32400.p', '.'), ('36000.p', '.'), ('43200.p', '.')],
+    datas=[('LeBot/11100.p', '.'), ('LeBot/36000.p', '.'), ('LeBot/43200.p', '.')],
     hiddenimports=['timeit', 'pickletools', 'uuid', 'unittest.mock', 'ctypes.wintypes'],
     hookspath=[],
     hooksconfig={},

@@ -5,7 +5,7 @@ a = Analysis(
     ['SeerV6/bot.py'],
     pathex=['SeerV6'],
     binaries=[],
-    datas=[('32400.p', '.')],
+    datas=[('SeerV6/32400.p', '.')],
     hiddenimports=['timeit', 'pickletools', 'uuid', 'unittest.mock', 'ctypes.wintypes'],
     hookspath=[],
     hooksconfig={},

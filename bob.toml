@@ -13,19 +13,3 @@ bot_configs = ["SeerV6/bot.toml"]
 [config.builder_config]
 builder_type = "pyinstaller"
 entry_file = "seerv6.spec"
-
-[[config]]
-project_name = "SeerV7.1 43200++"
-bot_configs = ["SeerV7/bot.toml"]
-
-[config.builder_config]
-builder_type = "pyinstaller"
-entry_file = "seerv7.spec"
-
-[[config]]
-project_name = "SeerV4 36000++"
-bot_configs = ["SeerV4/bot.toml"]
-
-[config.builder_config]
-builder_type = "pyinstaller"
-entry_file = "seerv4.spec"
